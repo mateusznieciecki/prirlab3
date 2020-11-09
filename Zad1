@@ -1,0 +1,165 @@
+import java.util.*;
+import java.util.concurrent.Semaphore;
+
+class Filozof1 extends Thread {
+
+    static int MAX=100;
+    static Semaphore [] widelec = new Semaphore[MAX];
+    int mojNum;
+
+    public Filozof1(int nr, int max){
+        mojNum=nr;
+        MAX = max;
+    }
+
+    public void run(){
+        while(true){
+            System.out.println("Mysle | " + mojNum);
+            try{
+                Thread.sleep((long)(7000 * Math.random()));
+            }catch (InterruptedException e){
+            }
+            widelec [mojNum].acquireUninterruptibly();
+            widelec[(mojNum+1)%MAX].acquireUninterruptibly();
+            System.out.println("Zaczyna jesc "+mojNum);
+            try{
+                Thread.sleep((long)(5000*Math.random()));
+            }catch (InterruptedException e){
+            }
+            System.out.println("Konczy jesc "+mojNum);
+            widelec[mojNum].release();
+            widelec[(mojNum+1)%MAX].release();
+        }
+    }
+}
+
+class Filozof2 extends Thread {
+    static int MAX = 100;
+    static Semaphore[] widelec = new Semaphore[MAX];
+    int mojNum;
+
+    public Filozof2(int nr, int max){
+        mojNum=nr;
+        MAX = max;
+    }
+
+    public void run(){
+        while(true){
+            System.out.println("Mysle | " + mojNum);
+            try{
+                Thread.sleep((long)(5000 * Math.random()));
+            }catch (InterruptedException e){
+            }
+            if(mojNum == 0){
+                widelec[(mojNum+1)%MAX].acquireUninterruptibly();
+                widelec[mojNum].acquireUninterruptibly();
+            }else{
+                widelec[mojNum].acquireUninterruptibly();
+                widelec[(mojNum+1)%MAX].acquireUninterruptibly();
+            }
+            System.out.println("Zaczyna jesc "+mojNum);
+            try {
+                Thread.sleep((long)(3000*Math.random()));
+            }catch (InterruptedException e){
+            }
+            System.out.println("Konczy jesc "+mojNum);
+            widelec[mojNum].release();
+            widelec[(mojNum+1)%MAX].release();
+        }
+    }
+}
+
+class Filozof3 extends Thread {
+
+    static int MAX = 100;
+    static Semaphore[] widelec = new Semaphore[MAX];
+    int mojNum;
+    Random losuj;
+
+    public Filozof3(int nr, int max){
+        mojNum=nr;
+        losuj = new Random(mojNum);
+        MAX = max;
+    }
+
+    public void run(){
+        while(true){
+            System.out.println("Mysle | " + mojNum);
+            try{
+                Thread.sleep((long)(7000 * Math.random()));
+            }catch (InterruptedException e){
+            }
+
+            int strona = losuj.nextInt(2);
+            boolean podnioslDwaWidelce = false;
+            do{
+                if(strona == 0){
+                    widelec[mojNum].acquireUninterruptibly();
+                    if(!(widelec[(mojNum+1)%MAX].tryAcquire())){
+                        widelec[mojNum].release();
+                    }else{
+                        podnioslDwaWidelce=true;
+                    }
+                }
+                else{
+                    widelec[(mojNum+1)%MAX].acquireUninterruptibly();
+                    if(!(widelec[mojNum].tryAcquire())){
+                        widelec[(mojNum+1)%MAX].release();
+                    }else {
+                        podnioslDwaWidelce=true;
+                    }
+                }
+            }while (podnioslDwaWidelce==false);
+            System.out.println("Zaczyna jesc "+mojNum);
+            try {
+                Thread.sleep((long)(3000*Math.random()));
+            }catch (InterruptedException e){
+            }
+            System.out.println("Konczy jesc " +mojNum);
+
+            widelec [mojNum].release();
+            widelec[(mojNum+1)%MAX].release();
+        }
+    }
+
+}
+
+
+public class App {
+    public static void main(String[] args) throws Exception {
+        Scanner s = new Scanner(System.in);
+        System.out.println("Liczba filozofow to: ");
+        int ilosc = s.nextInt();
+        System.out.println("Opcja:\n1.Problem 5 filozofow\n2.Problem ucztujących filozofów z niesymetrycznym sięganiem po widelce\n3.Rzut monety w rozwiązaniu problemu ucztujących Filozofów");
+        int wybor = s.nextInt();
+        if(wybor == 1)
+        {
+            for(int i = 0; i < ilosc; i++){
+                Filozof1.widelec[i] = new Semaphore(1);
+            }
+            for(int i = 0; i < ilosc; i++){
+                new Filozof1(i, ilosc).start();
+            }
+        }
+        else if(wybor == 2)
+        {
+            for(int i = 0; i < ilosc; i++){
+                Filozof2.widelec[i] = new Semaphore(1);
+            }
+            for(int i = 0; i < ilosc; i++){
+                new Filozof2(i, ilosc).start();
+            }
+        }
+        else if(wybor == 3)
+        {
+            for(int i = 0; i < ilosc; i++){
+            Filozof3.widelec[i] = new Semaphore(1);
+            }
+            for(int i = 0; i < ilosc; i++){
+                new Filozof3(i, ilosc).start();
+            }
+        }
+        else
+            System.out.println("Nie ma takiej opcji");
+        }
+    }
