@@ -1,0 +1,153 @@
+import java.util.Random;
+import java.util.Scanner;
+
+class Statek extends Thread {
+    static int PORT = 1;
+    static int ODPLYNIECIE = 2;
+    static int PODROZ = 3;
+    static int DOPLYNIECIE = 4;
+    static int ZATONIECIE = 5;
+    static int TANKOWANIE = 6;
+    static int TANKUJ = 1000;
+    static int REZERWA = 500;
+
+    int numer, paliwo = 1000, dlugosc_podrozy = 0, stan;
+    Port p;
+    Random rand;
+    boolean wyjscie = false;
+    public Statek(int numer, int paliwo, Port p){
+        this.numer = numer;
+        this.paliwo= paliwo;
+        this.stan = PODROZ;
+        this.p = p;
+        rand = new Random();
+    }
+
+    public void run(){
+        while(wyjscie == false){
+            if(stan == PORT){
+                dlugosc_podrozy = 0;
+                if(rand.nextInt(2) == 1){
+                    stan = ODPLYNIECIE;
+                    System.out.println("Statek o numerze " + numer + " odplywa z portu");
+                    stan = p.odplyniecie(numer);
+                }
+                else{
+                    System.out.println("Statek o numerze " + numer + " jeszcze nie odplywa");
+                }
+            }
+            else if(stan == ODPLYNIECIE){
+                System.out.println("Statek o numerze "+ numer + " odplynal");
+                stan = PODROZ;
+            }
+            else if(stan == PODROZ){
+                paliwo -= rand.nextInt(500);
+                dlugosc_podrozy += rand.nextInt(500);
+                System.out.println("Statek o numerze "+ numer + " plynie po szerokim morzu");
+                if(dlugosc_podrozy >= 2500){
+                    stan = DOPLYNIECIE;
+                }
+                else if(paliwo <= REZERWA){
+                    stan = TANKOWANIE ;
+                }
+                else try {
+                    sleep(rand.nextInt(1000));
+                }
+                catch (Exception e){
+                }
+            }
+            else if(stan == DOPLYNIECIE){
+                System.out.println("Statek o numerze " + numer + " chce zacumować, przeplynal: " + dlugosc_podrozy);
+                stan = p.przyplyniecie();
+                int wypadek = rand.nextInt(10);
+                if(stan == DOPLYNIECIE){
+                    dlugosc_podrozy = 0;
+                    if(wypadek == 3) stan = ZATONIECIE;
+                    else if(paliwo <= 0){
+                        paliwo -= rand.nextInt(500);
+                        System.out.println("Paliwo się kończy " + paliwo);
+                        if (paliwo <= 0) stan = TANKOWANIE;
+                    }
+                }
+            }
+            else if(stan == TANKOWANIE){
+                System.out.println("Statek o numerze " + numer + " tankuje");
+                paliwo = TANKUJ;
+                try {
+                    sleep(rand.nextInt(1000));
+                } catch (InterruptedException e) {
+                }
+                stan = PODROZ;
+            }
+            else if (stan == ZATONIECIE){
+                System.out.println("Statek o numerze " + numer + " zatonal");
+                p.zmniejsz();
+                wyjscie = true;
+            }
+        }
+    }
+}
+
+class Port {
+    static int PORT = 1;
+    static int ODPLYNIECIE = 2;
+    static int PODROZ = 3;
+    static int DOPLYNIECIE = 4;
+    static int ZATONIECIE = 5;
+    static int TANKOWANIE = 6;
+
+    int ilosc_miejsc;
+    int ilosc_zajetych;
+    int ilosc_statkow;
+
+    Port(int ilosc_miejsc, int ilosc_statkow){
+        this.ilosc_miejsc = ilosc_miejsc;
+        this.ilosc_statkow = ilosc_statkow;
+        this.ilosc_zajetych = 0;
+    }
+
+    synchronized int odplyniecie(int numer){
+        ilosc_zajetych--;
+        System.out.println("Statek o numerze " + numer + " odplynal");
+        return ODPLYNIECIE;
+    }
+
+    synchronized int przyplyniecie(){
+        try{
+            Thread.currentThread().sleep(1000);
+        }
+        catch (Exception ie){
+        }
+        if (ilosc_zajetych < ilosc_miejsc){
+            ilosc_zajetych++;
+            System.out.println("Miejsce w porcie o numerze " + ilosc_zajetych + " jest zajete");
+            return PORT;
+        }
+        else return DOPLYNIECIE;
+    }
+
+    synchronized void zmniejsz(){
+        ilosc_statkow--;
+        System.out.println("ZATONALEM");
+        if(ilosc_statkow == ilosc_miejsc) System.out.println("Ilosc statkow taka sama jak ilosc miejsc");
+    }
+}
+
+public class App {
+    static int ilosc_taksowek = 10;
+    static int ilosc_miejsc = 5;
+    static Port postoj;
+    public App(){}
+
+    public static void main(String a[]){
+        Scanner scan = new Scanner(System.in);
+        System.out.println("Podaj ilosc wolnych miejsc w porcie: ");
+        int n = scan.nextInt();
+        System.out.println("Podaj ilosc statkow: ");
+        int t = scan.nextInt();
+        postoj = new Port(n, t);
+        for(int i = 0; i < t; i++)
+            new Statek(i, 2000, postoj).start();
+    }
+}
+
